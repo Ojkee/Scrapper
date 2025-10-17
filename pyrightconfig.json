@@ -1,0 +1,10 @@
+{
+  "typeCheckingMode": "basic",
+  "venvPath": ".venv",
+  "venv": ".venv",
+  "pythonPath": "./.venv/bin/python",
+  "pythonVersion": "3.12",
+  "reportMissingImports": true,
+  "reportMissingModuleSource": true,
+  "pythonPlatform": "Linux"
+}
