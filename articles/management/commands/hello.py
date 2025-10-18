@@ -7,4 +7,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         _ = args
         _ = options
-        print("hello")
+        print("Hello, World")

@@ -1,10 +1,11 @@
 from typing import Any
 from django.core.management.base import BaseCommand, CommandParser
 from django.conf import settings
-from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+
+from articles.scrapers.url_parser import UrlParser
 
 
 class Command(BaseCommand):
@@ -19,31 +20,65 @@ class Command(BaseCommand):
 
     def handle(self, *args: tuple[Any, ...], **options: dict[str, Any]) -> None:
         _ = args
+
         links = options["links"] if len(options["links"]) else self._default_urls()
+        n_links = len(links)
 
-        for link in links:
-            if self._valid_url(link):
-                self.stdout.write(f"Parsing link: {link}")
-                self._print_title_url(link)
-            else:
+        for i, link in enumerate(links):
+            self.stdout.write(f"Parsing {i + 1}/{n_links} ...")
+
+            url = UrlParser(link).parse()
+            if not url:
                 self.stdout.write(self.style.ERROR(f"Invalid link: {link}"))
+                continue
 
-    def _valid_url(self, url: str) -> bool:
-        result = urlparse(url)
-        return result.scheme != "" and result.netloc != ""
+            self.stdout.write(f"Parsing link: {link}")
+            self._print_data_url(url)
 
-    def _print_title_url(self, url: str) -> None:
+    def _print_data_url(self, url: str) -> None:
         req = Request(url=url, headers={"User-Agent": "Mozilla/5.0"})
         try:
             html_page = urlopen(req).read()
-            soup = BeautifulSoup(html_page, "html.parser")
+            page = BeautifulSoup(html_page, "html.parser")
         except URLError as e:
             self.stdout.write(
                 self.style.ERROR(f"Link `{url}` does not exist: {e.reason}")
             )
             return
-        assert soup.title
-        print(soup.title.string)
+        self._print_title(page)
+        self._print_date(page)
+
+    def _print_title(self, page: BeautifulSoup) -> None:
+        assert page.title and page.title.string
+        self.stdout.write(self.style.SUCCESS("TITLE:"))
+        self.stdout.write(page.title.string)
+
+    def _print_date(self, page: BeautifulSoup) -> None:
+        self.stdout.write(self.style.SUCCESS("DATE:"))
+        selectors = [
+            'meta[property="article:published_time"]',
+            'meta[name="pubdate"]',
+            'meta[name="date"]',
+            'meta[name="DC.date.issued"]',
+            'meta[itemprop="datePublished"]',
+            "time",
+            ".date",
+            ".published",
+            ".post-date",
+            "[datetime]",
+        ]
+        for selector in selectors:
+            tag = page.select_one(selector)
+            if tag:
+                if tag.has_attr("content"):
+                    print(tag["content"])
+                elif tag.has_attr("datetime"):
+                    print(tag["datatime"])
+                else:
+                    print(tag.get_text(strip=True))
+                break
+        else:
+            print("Not found")
 
     def _default_urls(self) -> list[str]:
         urls_file = settings.DATA_DIR / "urls.txt"
