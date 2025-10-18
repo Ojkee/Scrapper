@@ -44,30 +44,27 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"Invalid link: {link}"))
                 continue
 
-            soup: BeautifulSoup
             match url_to_soup(url):
-                case SoupSuccess(soup=soup_):
-                    soup = soup_
                 case SoupFailure(msg=msg):
                     self.stdout.write(self.style.ERROR(msg))
                     continue
+                case SoupSuccess(value=soup):
+                    title = TitleParser(soup).parse()
+                    print(f"Title: {title}")
 
-            title = TitleParser(soup).parse()
-            print(f"Title: {title}")
+                    date = DateParser(soup).parse()
+                    date = date if date else datetime(0, 0, 0)
+                    date_f = date.strftime("%d.%m.%Y %H:%M:%S")
+                    print(f"Date: {date_f}")
 
-            date = DateParser(soup).parse()
-            date = date if date else datetime(0, 0, 0)
-            date_f = date.strftime("%d.%m.%Y %H:%M:%S")
-            print(f"Date: {date_f}")
+                    content_parser = ContentParser(soup)
+                    raw_content = content_parser.parse()
+                    raw_content_str = raw_content if raw_content else None
+                    # print(f"Raw Content: {raw_content_str}")
 
-            content_parser = ContentParser(soup)
-            raw_content = content_parser.parse()
-            raw_content_str = raw_content if raw_content else None
-            # print(f"Raw Content: {raw_content_str}")
-
-            plain_content = content_parser.parse(clean=True)
-            plain_content_str = plain_content if plain_content else None
-            print(f"Plain Content: {plain_content_str}")
+                    plain_content = content_parser.parse(clean=True)
+                    plain_content_str = plain_content if plain_content else None
+                    print(f"Plain Content: {plain_content_str}")
 
     def _urls_from_file(self, urls_file) -> list[str]:
         if not urls_file.exists():

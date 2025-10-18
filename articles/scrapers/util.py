@@ -28,7 +28,9 @@ def url_to_soup(url: str) -> SoupResult:
 def read_page_form_url(url: str) -> str | SoupFailure:
     try:
         req = Request(url=url, headers={"User-Agent": "Mozilla/5.0"})
-        return urlopen(req).read()
+        raw = urlopen(req).read()
+        html = raw.decode("utf-8")
+        return html
     except HTTPError as e:
         return SoupFailure(f"HTTP {e.code}: `{url}` {e.reason}")
     except URLError as e:
@@ -40,8 +42,8 @@ def read_page_form_url(url: str) -> str | SoupFailure:
 
 
 def soup_from_page(html_page: str) -> SoupResult:
-    if not is_js_rendered(html_page):
-        return SoupSuccess(BeautifulSoup(html_page, "html.parser"))
+    # if not is_js_rendered(html_page):
+    return SoupSuccess(BeautifulSoup(html_page, "html.parser"))
     return SoupFailure("not implemented")
 
 
