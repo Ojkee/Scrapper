@@ -12,4 +12,6 @@ class TitleParser(SoupParser[T]):
         self._soup = soup
 
     def parse(self) -> Optional[T]:
-        raise NotImplementedError("TitleParser.parse not implemented")
+        if self._soup.title and self._soup.title.string:
+            return self._soup.title.string
+        return None

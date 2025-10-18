@@ -1,6 +1,5 @@
 from django.core.validators import URLValidator
 from typing import Optional
-from bs4 import BeautifulSoup
 from .base import SoupParser
 
 type T = str

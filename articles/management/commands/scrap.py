@@ -1,10 +1,14 @@
-from typing import Any
+from typing import Any, Optional
 from django.core.management.base import BaseCommand, CommandParser
 from django.conf import settings
 from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
+import socket
+
+from articles.scrapers.date_parser import DateParser
+from articles.scrapers.title_parser import TitleParser
 from articles.scrapers.url_parser import UrlParser
 
 
@@ -21,66 +25,46 @@ class Command(BaseCommand):
     def handle(self, *args: tuple[Any, ...], **options: dict[str, Any]) -> None:
         _ = args
 
-        links = options["links"] if len(options["links"]) else self._default_urls()
+        links = options["links"] if len(options["links"]) else self._urls_from_file()
         n_links = len(links)
 
         for i, link in enumerate(links):
-            self.stdout.write(f"Parsing {i + 1}/{n_links} ...")
+            self.stdout.write(f"\nParsing {i + 1}/{n_links} ...")
 
             url = UrlParser(link).parse()
             if not url:
                 self.stdout.write(self.style.ERROR(f"Invalid link: {link}"))
                 continue
 
-            self.stdout.write(f"Parsing link: {link}")
-            self._print_data_url(url)
+            soup = self._soup_from_url(url)
+            if not soup:
+                continue
 
-    def _print_data_url(self, url: str) -> None:
-        req = Request(url=url, headers={"User-Agent": "Mozilla/5.0"})
+            title = TitleParser(soup).parse()
+            print(f"Title: {title}")
+
+            date = DateParser(soup).parse()
+            print(f"Date: {date}")
+
+    def _soup_from_url(self, url: str) -> Optional[BeautifulSoup]:
         try:
+            req = Request(url=url, headers={"User-Agent": "Mozilla/5.0"})
             html_page = urlopen(req).read()
-            page = BeautifulSoup(html_page, "html.parser")
+            return BeautifulSoup(html_page, "html.parser")
+        except HTTPError as e:
+            self.stdout.write(self.style.ERROR(f"HTTP {e.code}: `{url}` {e.reason}"))
         except URLError as e:
             self.stdout.write(
-                self.style.ERROR(f"Link `{url}` does not exist: {e.reason}")
+                self.style.ERROR(f"Link `{url}` does not exist: `{e.reason}`")
             )
-            return
-        self._print_title(page)
-        self._print_date(page)
+        except socket.error as e:
+            self.stdout.write(self.style.ERROR(f"Timeout handling `{url}`: `{e}`"))
+        except ValueError as e:
+            self.stdout.write(self.style.ERROR(f"ValueError: `{e}`"))
 
-    def _print_title(self, page: BeautifulSoup) -> None:
-        assert page.title and page.title.string
-        self.stdout.write(self.style.SUCCESS("TITLE:"))
-        self.stdout.write(page.title.string)
+        return None
 
-    def _print_date(self, page: BeautifulSoup) -> None:
-        self.stdout.write(self.style.SUCCESS("DATE:"))
-        selectors = [
-            'meta[property="article:published_time"]',
-            'meta[name="pubdate"]',
-            'meta[name="date"]',
-            'meta[name="DC.date.issued"]',
-            'meta[itemprop="datePublished"]',
-            "time",
-            ".date",
-            ".published",
-            ".post-date",
-            "[datetime]",
-        ]
-        for selector in selectors:
-            tag = page.select_one(selector)
-            if tag:
-                if tag.has_attr("content"):
-                    print(tag["content"])
-                elif tag.has_attr("datetime"):
-                    print(tag["datatime"])
-                else:
-                    print(tag.get_text(strip=True))
-                break
-        else:
-            print("Not found")
-
-    def _default_urls(self) -> list[str]:
+    def _urls_from_file(self) -> list[str]:
         urls_file = settings.DATA_DIR / "urls.txt"
         if not urls_file.exists():
             self.stderr.write("FAIL")
