@@ -10,5 +10,7 @@ class ContentParser(SoupParser[T]):
         super().__init__()
         self._soup = soup
 
-    def parse(self, soup) -> Optional[T]:
-        return super().parse(soup)
+    def parse(self, clean: bool = False) -> Optional[T]:
+        if not clean:
+            return str(self._soup)
+        return self._soup.get_text()

@@ -1,15 +1,18 @@
+from datetime import datetime
 from typing import Any, Optional
+from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand, CommandParser
 from django.conf import settings
-from bs4 import BeautifulSoup
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
-import socket
-
-from articles.scrapers.date_parser import DateParser
-from articles.scrapers.title_parser import TitleParser
-from articles.scrapers.url_parser import UrlParser
+from articles.scrapers import (
+    url_to_soup,
+    SoupSuccess,
+    SoupFailure,
+    ContentParser,
+    DateParser,
+    TitleParser,
+    UrlParser,
+)
 
 
 class Command(BaseCommand):
@@ -25,7 +28,12 @@ class Command(BaseCommand):
     def handle(self, *args: tuple[Any, ...], **options: dict[str, Any]) -> None:
         _ = args
 
-        links = options["links"] if len(options["links"]) else self._urls_from_file()
+        urls_file = settings.DATA_DIR / "urls.txt"
+        links = (
+            options["links"]
+            if len(options["links"])
+            else self._urls_from_file(urls_file)
+        )
         n_links = len(links)
 
         for i, link in enumerate(links):
@@ -36,37 +44,32 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"Invalid link: {link}"))
                 continue
 
-            soup = self._soup_from_url(url)
-            if not soup:
-                continue
+            soup: BeautifulSoup
+            match url_to_soup(url):
+                case SoupSuccess(soup=soup_):
+                    soup = soup_
+                case SoupFailure(msg=msg):
+                    self.stdout.write(self.style.ERROR(msg))
+                    continue
 
             title = TitleParser(soup).parse()
             print(f"Title: {title}")
 
-            # TODO: parse and test more date formats
             date = DateParser(soup).parse()
-            print(f"Date: {date}")
+            date = date if date else datetime(0, 0, 0)
+            date_f = date.strftime("%d.%m.%Y %H:%M:%S")
+            print(f"Date: {date_f}")
 
-    def _soup_from_url(self, url: str) -> Optional[BeautifulSoup]:
-        try:
-            req = Request(url=url, headers={"User-Agent": "Mozilla/5.0"})
-            html_page = urlopen(req).read()
-            return BeautifulSoup(html_page, "html.parser")
-        except HTTPError as e:
-            self.stdout.write(self.style.ERROR(f"HTTP {e.code}: `{url}` {e.reason}"))
-        except URLError as e:
-            self.stdout.write(
-                self.style.ERROR(f"Link `{url}` does not exist: `{e.reason}`")
-            )
-        except socket.error as e:
-            self.stdout.write(self.style.ERROR(f"Timeout handling `{url}`: `{e}`"))
-        except ValueError as e:
-            self.stdout.write(self.style.ERROR(f"ValueError: `{e}`"))
+            content_parser = ContentParser(soup)
+            raw_content = content_parser.parse()
+            raw_content_str = raw_content if raw_content else None
+            # print(f"Raw Content: {raw_content_str}")
 
-        return None
+            plain_content = content_parser.parse(clean=True)
+            plain_content_str = plain_content if plain_content else None
+            print(f"Plain Content: {plain_content_str}")
 
-    def _urls_from_file(self) -> list[str]:
-        urls_file = settings.DATA_DIR / "urls.txt"
+    def _urls_from_file(self, urls_file) -> list[str]:
         if not urls_file.exists():
             self.stderr.write(self.style.ERROR("Fail loading default urls data file"))
             return []
