@@ -43,6 +43,7 @@ class Command(BaseCommand):
             title = TitleParser(soup).parse()
             print(f"Title: {title}")
 
+            # TODO: parse and test more date formats
             date = DateParser(soup).parse()
             print(f"Date: {date}")
 
@@ -67,7 +68,7 @@ class Command(BaseCommand):
     def _urls_from_file(self) -> list[str]:
         urls_file = settings.DATA_DIR / "urls.txt"
         if not urls_file.exists():
-            self.stderr.write("FAIL")
+            self.stderr.write(self.style.ERROR("Fail loading default urls data file"))
             return []
 
         with urls_file.open("r", encoding="utf-8") as urls:
