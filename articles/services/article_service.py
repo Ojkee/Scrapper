@@ -1,4 +1,3 @@
-from typing import Optional
 from articles.models.article import Article
 
 
