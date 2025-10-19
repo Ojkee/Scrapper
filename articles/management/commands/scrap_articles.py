@@ -1,19 +1,11 @@
-from datetime import datetime
 from typing import Any
 from django.core.management.base import BaseCommand, CommandParser
 from django.conf import settings
 
 # from playwright.sync_api import sync_playwright
 
-from articles.scrapers import (
-    url_to_soup,
-    SoupSuccess,
-    SoupFailure,
-    ContentParser,
-    DateParser,
-    TitleParser,
-    UrlParser,
-)
+from articles.scrapers import ArticleScraper, ScrapError, ScrapSuccess
+from articles.services import ArticleService
 
 
 class Command(BaseCommand):
@@ -37,29 +29,20 @@ class Command(BaseCommand):
         )
         n_links = len(links)
 
-        for i, link in enumerate(links):
-            self.stdout.write(f"\nParsing {i + 1}/{n_links} ...")
-
-            url = UrlParser(link).parse()
-            if not url:
-                self.stdout.write(self.style.ERROR(f"Invalid link: {link}"))
+        for i, link in enumerate(links, start=1):
+            self.stdout.write(f"\nParsing {i}/{n_links} ...")
+            if ArticleService.exists(link):
+                self.stdout.write(f"Cached: {link}")
                 continue
 
-            # Check if url in base
-
-            match url_to_soup(url):
-                case SoupFailure(msg=msg):
+            match ArticleScraper.parse(link):
+                case ScrapError(msg=msg):
                     self.stdout.write(self.style.ERROR(msg))
-                    continue
-                case SoupSuccess(value=soup):
-                    url
-                    title = TitleParser(soup).parse()
-                    date = DateParser(soup).parse()
-                    date = date if date else datetime(0, 0, 0)
-                    date_f = date.strftime("%d.%m.%Y %H:%M:%S")
-                    content_parser = ContentParser(soup)
-                    raw_content = content_parser.parse()
-                    plain_content = content_parser.parse(clean=True)
+                case ScrapSuccess(article=article):
+                    self.stdout.write(
+                        self.style.SUCCESS(f"Saved {link}:\n\t{article.title}")
+                    )
+                    ArticleService.save(article)
 
     def _urls_from_file(self, urls_file) -> list[str]:
         if not urls_file.exists():
