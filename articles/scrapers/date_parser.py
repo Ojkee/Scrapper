@@ -1,6 +1,6 @@
 from __future__ import annotations
 import dateparser
-from dateutil.parser import isoparse
+from dateutil.parser import ParserError, isoparse
 from datetime import datetime
 from typing import Callable, Optional
 
@@ -57,7 +57,10 @@ def from_selectors(soup: BeautifulSoup) -> Optional[datetime]:
     if not date_str:
         return None
 
-    return isoparse(date_str)
+    try:
+        return isoparse(date_str)
+    except (ValueError, ParserError):
+        return dateparser.parse(date_str)
 
 
 def date_str_from_tag(tag: Optional[element.Tag]) -> Optional[str]:

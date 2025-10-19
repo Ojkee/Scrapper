@@ -7,3 +7,4 @@ lxml
 python-dateutil
 dateparser==1.2.2
 pytest==8.4.2
+# playwright
