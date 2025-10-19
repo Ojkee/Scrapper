@@ -47,7 +47,7 @@ Scrapping command
 ```bash
 docker compose run --rm scrapper_web python manage.py scrape_articles <ulrs>
 ```
-Parameter: <urls> is optional, if not provided, scraper will handle default urls from `articles/data/urls.txt` file.
+Parameter `<urls>` is optional, if not provided, scraper will handle default urls from `articles/data/urls.txt` file.
 
 
 
