@@ -8,5 +8,5 @@ class ArticleService:
         article.save()
 
     @staticmethod
-    def exists(link: str) -> Optional[bool]:
-        return None
+    def exists(link: str) -> bool:
+        return Article.objects.filter(url=link).exists()

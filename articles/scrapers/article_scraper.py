@@ -24,7 +24,7 @@ class ArticleScraper:
             case SoupSuccess(value=soup):
                 title = TitleParser(soup).parse()
                 date = DateParser(soup).parse()
-                publish_date = date if date else datetime(0, 0, 0)
+                publish_date = date if date else datetime(1, 1, 1)
                 content_parser = ContentParser(soup)
                 raw_content = content_parser.parse()
                 plain_content = content_parser.parse(clean=True)

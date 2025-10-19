@@ -24,7 +24,7 @@ DATA_DIR = BASE_DIR / "articles" / "data"
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-!ta&z_1vn(*5)mc#*y^ww19$57p_oatb&nyk3)svp%7&28dd1g"
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -81,9 +81,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB", "articles_db"),
-        "USER": os.getenv("POSTGRES_USER", "admin"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "passwd123"),
-        "HOST": os.getenv("POSTGRES_HOST", "pg_db"),
+        "USER": os.getenv("POSTGRES_USER", "user"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "password"),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }

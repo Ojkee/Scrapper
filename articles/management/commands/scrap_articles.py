@@ -9,7 +9,13 @@ from articles.services import ArticleService
 
 
 class Command(BaseCommand):
-    help: str = "Scrap `title` from given url"
+    help: str = """
+                Scraping from given url: 
+                    - Title
+                    - Publish date
+                    - Raw contents
+                    - Contents without HTLM tags
+                """
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -27,10 +33,9 @@ class Command(BaseCommand):
             if len(options["links"])
             else self._urls_from_file(urls_file)
         )
-        n_links = len(links)
 
         for i, link in enumerate(links, start=1):
-            self.stdout.write(f"\nParsing {i}/{n_links} ...")
+            self.stdout.write(f"\nParsing {i}/{len(links)} ...")
             if ArticleService.exists(link):
                 self.stdout.write(f"Cached: {link}")
                 continue
@@ -39,10 +44,10 @@ class Command(BaseCommand):
                 case ScrapError(msg=msg):
                     self.stdout.write(self.style.ERROR(msg))
                 case ScrapSuccess(article=article):
+                    ArticleService.save(article)
                     self.stdout.write(
                         self.style.SUCCESS(f"Saved {link}:\n\t{article.title}")
                     )
-                    ArticleService.save(article)
 
     def _urls_from_file(self, urls_file) -> list[str]:
         if not urls_file.exists():
